@@ -12,18 +12,63 @@ Nada sube a internet. Ni tus vídeos, ni tu prompt, ni nada.
 
 ## Instalación
 
+Hace falta **Python 3.10 o superior**. Compruébalo con `python --version`.
+
+<details open>
+<summary><b>Linux y macOS</b></summary>
+
 ```bash
 git clone https://github.com/DakialEman/AutoEdit
 cd AutoEdit
 
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+python -m autoedit
+```
+</details>
+
+<details open>
+<summary><b>Windows</b></summary>
+
+Instala Python desde [python.org](https://www.python.org/downloads/) — **no**
+desde la Microsoft Store, que da problemas de permisos con las carpetas. En el
+instalador marca **«Add python.exe to PATH»** (viene desmarcada, abajo del todo)
+y reinicia la terminal al terminar.
+
+En **PowerShell** o **CMD**:
+
+```powershell
+git clone https://github.com/DakialEman/AutoEdit
+cd AutoEdit
+
 python -m venv .venv
-source .venv/bin/activate          # en Windows: .venv\Scripts\activate
+.venv\Scripts\activate
 pip install -r requirements.txt
 
 python -m autoedit
 ```
 
-Se abre solo en <http://127.0.0.1:8765>.
+En **Git Bash** la ruta de activación cambia — es `Scripts`, no `bin`:
+
+```bash
+python -m venv .venv
+source .venv/Scripts/activate
+pip install -r requirements.txt
+
+python -m autoedit
+```
+</details>
+
+Se abre solo en <http://127.0.0.1:8765>. Sabrás que el entorno está activo
+porque el prompt lleva `(.venv)` delante.
+
+> **Si Windows responde «no se encontró Python» y te ofrece la Microsoft Store**,
+> es un atajo falso que trae el sistema: Python no está instalado, o se instaló
+> sin marcar «Add python.exe to PATH». Instálalo de python.org y abre una
+> terminal nueva. Si `python` sigue fallando pero `py --version` funciona, usa
+> `py` en lugar de `python` en todos los comandos.
 
 **FFmpeg** es lo único que hace falta de fuera, y viene incluido con
 `imageio-ffmpeg`, así que normalmente no tienes que instalar nada. Si ya tienes
