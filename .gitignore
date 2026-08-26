@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Datos locales de AutoEdit (proyectos, caché de render, exportaciones)
+/AutoEdit/
+*.autoedit.json
+
+# Sistema
+.DS_Store
+Thumbs.db

@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autoedit"
+version = "1.0.0"
+description = "Editor de vídeo automático y local: monta tus clips con un prompt y exporta a MP4 o a un proyecto editable de CapCut"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["video", "editor", "ffmpeg", "capcut", "automontaje", "beat-sync"]
+classifiers = [
+    "Environment :: Web Environment",
+    "Intended Audience :: End Users/Desktop",
+    "Natural Language :: Spanish",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Video :: Non-Linear Editor",
+]
+
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "pydantic>=2.6",
+    "python-multipart>=0.0.9",
+    "numpy>=1.24",
+    "pillow>=10.0",
+    "imageio-ffmpeg>=0.4.9",   # FFmpeg incluido, por si el sistema no lo tiene
+]
+
+[project.optional-dependencies]
+# Interpretación del prompt con Claude. Sin esto, AutoEdit usa sus reglas locales.
+ai = ["anthropic>=0.40"]
+dev = ["pytest>=8.0", "httpx>=0.27"]
+
+[project.scripts]
+autoedit = "autoedit.__main__:main"
+
+[project.urls]
+Repository = "https://github.com/DakialEman/AutoEdit"
+
+[tool.setuptools]
+packages = [
+    "autoedit",
+    "autoedit.ai",
+    "autoedit.analysis",
+    "autoedit.export",
+    "autoedit.render",
+]
+
+[tool.setuptools.package-data]
+autoedit = ["../web/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]

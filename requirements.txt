@@ -1,0 +1,12 @@
+# Dependencias de AutoEdit.
+#   pip install -r requirements.txt
+fastapi>=0.110
+uvicorn[standard]>=0.27
+pydantic>=2.6
+python-multipart>=0.0.9
+numpy>=1.24
+pillow>=10.0
+imageio-ffmpeg>=0.4.9
+
+# Para desarrollo y tests:
+#   pip install pytest httpx

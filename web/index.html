@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutoEdit</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">🎬</span>
+    <span class="brand-name">AutoEdit</span>
+  </div>
+
+  <div class="project-switch">
+    <input id="project-name" class="project-name" placeholder="Sin título" spellcheck="false">
+    <button id="btn-projects" class="ghost" title="Cambiar de proyecto">Proyectos ▾</button>
+  </div>
+
+  <div class="topbar-right">
+    <div id="job-strip" class="job-strip" hidden>
+      <span id="job-label" class="job-label"></span>
+      <div class="job-bar"><div id="job-fill" class="job-fill"></div></div>
+      <button id="job-cancel" class="icon-btn" title="Cancelar">✕</button>
+    </div>
+    <button id="btn-preview" class="secondary">Vista previa</button>
+    <button id="btn-export" class="primary">Exportar</button>
+  </div>
+</header>
+
+<main class="workspace">
+
+  <!-- ─────────── Biblioteca ─────────── -->
+  <aside class="panel library" id="library-panel">
+    <div class="panel-head">
+      <h2>Material</h2>
+      <div class="panel-head-actions">
+        <button id="btn-add-files" class="ghost small">Subir</button>
+        <button id="btn-browse" class="ghost small">Del disco</button>
+      </div>
+    </div>
+
+    <div id="dropzone" class="dropzone">
+      <div class="dropzone-inner">
+        <span class="dropzone-icon">↓</span>
+        <p>Arrastra aquí tus vídeos, fotos y música</p>
+        <span class="hint">o pulsa «Subir» / «Del disco»</span>
+      </div>
+    </div>
+
+    <div class="library-groups" id="library-groups"></div>
+    <input type="file" id="file-input" multiple hidden
+           accept="video/*,image/*,audio/*,.mp4,.mov,.mkv,.webm,.jpg,.jpeg,.png,.heic,.mp3,.wav,.m4a,.aac,.flac">
+  </aside>
+
+  <!-- ─────────── Centro ─────────── -->
+  <section class="center">
+
+    <div class="prompt-bar">
+      <div class="prompt-row">
+        <textarea id="prompt" rows="1" spellcheck="false"
+          placeholder="Describe el montaje: «vertical para TikTok, rápido, al ritmo de la música, color cálido, 30 segundos»"></textarea>
+        <button id="btn-autoedit" class="primary tall">Auto-editar</button>
+      </div>
+      <div class="style-strip" id="style-strip"></div>
+      <div class="understood" id="understood" hidden></div>
+    </div>
+
+    <div class="stage">
+      <div class="viewer" id="viewer">
+        <video id="preview-video" playsinline></video>
+        <div class="viewer-empty" id="viewer-empty">
+          <p>Sin vista previa todavía</p>
+          <button id="btn-make-preview" class="secondary">Generar vista previa</button>
+          <span class="hint">Se renderiza en baja resolución, es rápido.</span>
+        </div>
+        <div class="viewer-stale" id="viewer-stale" hidden>
+          <span>El montaje ha cambiado desde esta vista previa</span>
+          <button id="btn-refresh-preview" class="ghost small">Actualizar</button>
+        </div>
+      </div>
+
+      <div class="transport">
+        <button id="btn-play" class="icon-btn big" title="Reproducir (espacio)">▶</button>
+        <span class="time" id="time-current">0:00</span>
+        <input type="range" id="scrub" min="0" max="1000" value="0" class="scrub">
+        <span class="time" id="time-total">0:00</span>
+        <div class="transport-right">
+          <button id="btn-split" class="ghost small" title="Cortar por el cursor (S)">Cortar</button>
+          <button id="btn-reshuffle" class="ghost small" title="Otra combinación">Rebarajar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-wrap">
+      <div class="timeline-head">
+        <div class="timeline-stats" id="timeline-stats"></div>
+        <div class="zoom">
+          <button id="zoom-out" class="icon-btn" title="Alejar">−</button>
+          <button id="zoom-in" class="icon-btn" title="Acercar">+</button>
+        </div>
+      </div>
+      <div class="timeline-scroll" id="timeline-scroll">
+        <div class="timeline" id="timeline">
+          <div class="ruler" id="ruler"></div>
+          <div class="track-rows" id="track-rows"></div>
+          <div class="playhead" id="playhead"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── Inspector ─────────── -->
+  <aside class="panel inspector" id="inspector">
+    <div class="panel-head"><h2 id="inspector-title">Ajustes</h2></div>
+    <div class="inspector-body" id="inspector-body"></div>
+  </aside>
+</main>
+
+<!-- ─────────── Diálogos ─────────── -->
+<div class="modal-backdrop" id="modal-backdrop" hidden>
+  <div class="modal" id="modal">
+    <div class="modal-head">
+      <h3 id="modal-title">Título</h3>
+      <button class="icon-btn" id="modal-close">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script type="module" src="/static/js/app.js"></script>
+</body>
+</html>
