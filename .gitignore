@@ -10,7 +10,15 @@ venv/
 .mypy_cache/
 .ruff_cache/
 
-# Datos locales de AutoEdit (proyectos, caché de render, exportaciones)
+# Datos locales de AutoEdit.
+#
+# La carpeta de trabajo por defecto es ~/AutoEdit, que coincide con la raíz del
+# repositorio si lo has clonado ahí. Estas reglas evitan que los proyectos, la
+# caché de render y las exportaciones (que pesan lo suyo) acaben en git.
+/projects/
+/media/
+/fonts/
+/settings.json
 /AutoEdit/
 *.autoedit.json
 
