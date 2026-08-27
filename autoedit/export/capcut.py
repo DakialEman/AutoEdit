@@ -38,6 +38,20 @@ def _uid() -> str:
     return str(uuid.uuid4()).upper()
 
 
+def _draft_path(path: str | Path) -> str:
+    """Ruta absoluta con barras normales, como las escribe CapCut.
+
+    CapCut guarda sus rutas siempre con `/`, también en Windows
+    (`C:/Users/.../com.lveditor.draft/MiProyecto`). Si el borrador llega con
+    barras invertidas, CapCut no reconoce el formato y lo rechaza con
+    «el proyecto actual proviene de una ruta inusual».
+
+    En Linux y macOS `as_posix()` no cambia nada, y por eso este fallo era
+    invisible al desarrollar fuera de Windows.
+    """
+    return Path(path).resolve().as_posix()
+
+
 # --------------------------------------------------------------------------
 # Localización de la carpeta de borradores
 # --------------------------------------------------------------------------
@@ -131,7 +145,7 @@ def _video_material(clip: FlatClip) -> dict:
         "media_path": "",
         "object_locked": None,
         "origin_material_id": "",
-        "path": str(Path(asset.path).resolve()),
+        "path": _draft_path(asset.path),
         "picture_from": "none",
         "picture_set_category_id": "",
         "picture_set_category_name": "",
@@ -177,7 +191,7 @@ def _audio_material(clip: FlatClip) -> dict:
         "local_material_id": "",
         "music_id": "",
         "name": asset.name,
-        "path": str(Path(asset.path).resolve()),
+        "path": _draft_path(asset.path),
         "query": "",
         "request_id": "",
         "resource_id": "",
@@ -587,7 +601,7 @@ def build_draft_meta(flat: FlatTimeline, name: str, folder: Path, draft_id: str)
             "create_time": now_s,
             "duration": to_microseconds(asset.duration),
             "extra_info": asset.name,
-            "file_Path": str(Path(asset.path).resolve()),
+            "file_Path": _draft_path(asset.path),
             "height": asset.height or 0,
             "id": _uid(),
             "import_time": now_s,
@@ -618,7 +632,7 @@ def build_draft_meta(flat: FlatTimeline, name: str, folder: Path, draft_id: str)
             "draft_enterprise_name": "",
             "enterprise_material": [],
         },
-        "draft_fold_path": str(folder.resolve()),
+        "draft_fold_path": _draft_path(folder),
         "draft_id": draft_id,
         "draft_is_ai_packaging_used": False,
         "draft_is_ai_shorts": False,
@@ -639,7 +653,7 @@ def build_draft_meta(flat: FlatTimeline, name: str, folder: Path, draft_id: str)
         "draft_name": name,
         "draft_new_version": "",
         "draft_removable_storage_device": "",
-        "draft_root_path": str(folder.parent.resolve()),
+        "draft_root_path": _draft_path(folder.parent),
         "draft_segment_backup_info": [],
         "draft_timeline_materials_size_": 0,
         "draft_type": "",
@@ -787,8 +801,8 @@ def export_capcut(
                 m += 1
             shutil.copytree(folder, target)
             # `draft_fold_path` debe apuntar a donde vive de verdad el borrador.
-            meta["draft_fold_path"] = str(target.resolve())
-            meta["draft_root_path"] = str(target.parent.resolve())
+            meta["draft_fold_path"] = _draft_path(target)
+            meta["draft_root_path"] = _draft_path(target.parent)
             (target / "draft_meta_info.json").write_text(
                 json.dumps(meta, ensure_ascii=False, indent=2), "utf-8"
             )

@@ -107,6 +107,18 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .project-name:hover { border-color: var(--line); }
 .project-name:focus { outline: none; border-color: var(--accent); background: var(--bg-input); }
 
+.projects-btn {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-raised);
+  font-size: 13px;
+  transition: border-color .15s, background .15s;
+}
+.projects-btn:hover { border-color: var(--accent); background: #232833; }
+.projects-btn .chev { color: var(--text-faint); font-size: 10px; }
+
 .topbar-right { display: flex; align-items: center; gap: 8px; }
 
 .job-strip {
@@ -269,8 +281,43 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   place-items: center;
   overflow: hidden;
 }
-#preview-video { max-width: 100%; max-height: 100%; display: none; }
+/* El vídeo se coloca en absoluto y se encaja con object-fit. Con
+   `max-height: 100%` la altura del hueco la marcaba el propio vídeo (1920 px
+   en vertical), así que el 100% no limitaba nada y se salía de la pantalla. */
+#preview-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: none;
+  background: #000;
+}
 #preview-video.ready { display: block; }
+
+.viewer-tools {
+  position: absolute; top: 10px; right: 10px; z-index: 4;
+  display: flex; gap: 6px;
+  opacity: 0; transition: opacity .15s;
+}
+.viewer:hover .viewer-tools, .viewer-tools:focus-within { opacity: 1; }
+.viewer-tools .icon-btn {
+  background: rgba(13, 15, 19, .72);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(4px);
+  color: var(--text);
+}
+.viewer-tools .icon-btn:hover { background: rgba(30, 35, 45, .92); }
+
+/* Pantalla completa: el visor y su barra de transporte, sin nada más. */
+.stage:fullscreen { padding: 0; background: #000; }
+.stage:fullscreen .viewer { border: none; border-radius: 0; }
+.stage:fullscreen .transport {
+  padding: 10px 20px;
+  background: rgba(13, 15, 19, .94);
+  border-top: 1px solid var(--line);
+}
+.stage:fullscreen .viewer-tools { opacity: 1; }
 .viewer-empty { text-align: center; color: var(--text-faint); display: grid; gap: 10px; justify-items: center; }
 .viewer-empty p { margin: 0; }
 .viewer-stale {
@@ -490,6 +537,25 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .list-row .grow { flex: 1; min-width: 0; }
 .list-row .sub { font-size: 11.5px; color: var(--text-faint); }
 .list-row .name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.list-row .row-actions { display: none; gap: 4px; flex: none; }
+.list-row:hover .row-actions { display: flex; }
+.icon-btn.trash:hover { background: rgba(255, 107, 107, .14); color: var(--err); }
+
+.new-project {
+  display: flex; gap: 8px; align-items: center;
+  padding: 12px; margin-bottom: 14px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+}
+.new-project input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+.new-project input:focus { outline: none; border-color: var(--accent); }
 
 .crumb { font: 12px var(--mono); color: var(--text-dim); word-break: break-all; margin-bottom: 10px; }
 .note {
@@ -517,6 +583,20 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   max-width: 420px;
   animation: slide-in .2s ease-out;
 }
+.toast {
+  display: flex; align-items: center; gap: 14px; justify-content: space-between;
+}
+.toast-action {
+  flex: none;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg-panel);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+.toast-action:hover { background: var(--accent-soft); color: var(--text); }
 .toast.error { border-left-color: var(--err); }
 .toast.ok { border-left-color: var(--ok); }
 @keyframes slide-in { from { opacity: 0; transform: translateX(16px); } }

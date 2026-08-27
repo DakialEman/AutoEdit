@@ -74,6 +74,14 @@ const actions = {
     catch (error) { toastError(error); }
   },
 
+  /** Devuelve el proyecto a un estado anterior (botón «Deshacer»). */
+  async restoreSnapshot(snapshot) {
+    try {
+      setProject(await api.patchProject(state.project.id, snapshot));
+      toast('Restaurado', 'ok');
+    } catch (error) { toastError(error); }
+  },
+
   async patchTimeline(changes) {
     const timeline = { ...state.project.timeline, ...changes };
     await actions.patchProject({ timeline });
@@ -404,6 +412,7 @@ function initShortcuts() {
 
     if (event.code === 'Space') { event.preventDefault(); togglePlay(); }
     else if (event.key === 's' || event.key === 'S') { event.preventDefault(); actions.splitAtPlayhead(); }
+    else if (event.key === 'f' || event.key === 'F') { event.preventDefault(); toggleFullscreen(); }
     else if (event.key === 'Delete' || event.key === 'Backspace') {
       const clip = selectedClip();
       if (clip) { event.preventDefault(); actions.deleteClip(clip.id); }
@@ -414,6 +423,25 @@ function initShortcuts() {
       actions.seek(Math.min(total, state.playhead + (event.shiftKey ? 1 : 1 / 30)));
     } else if (event.key === 'Escape') { select(null, null); }
   });
+}
+
+function toggleFullscreen() {
+  const stage = $('#stage');
+  const active = document.fullscreenElement || document.webkitFullscreenElement;
+  if (active) {
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  } else {
+    const request = stage.requestFullscreen || stage.webkitRequestFullscreen;
+    if (!request) { toast('Tu navegador no permite pantalla completa aquí'); return; }
+    request.call(stage).catch((error) => toastError(error));
+  }
+}
+
+function syncFullscreenButton() {
+  const active = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const button = $('#btn-fullscreen');
+  button.textContent = active ? '⛶' : '⛶';
+  button.title = active ? 'Salir de pantalla completa (Esc)' : 'Pantalla completa (F)';
 }
 
 function togglePlay() {
@@ -455,6 +483,10 @@ async function boot() {
   $('#btn-preview').addEventListener('click', makePreview);
   $('#btn-make-preview').addEventListener('click', makePreview);
   $('#btn-refresh-preview').addEventListener('click', makePreview);
+  $('#btn-fullscreen').addEventListener('click', toggleFullscreen);
+  for (const evento of ['fullscreenchange', 'webkitfullscreenchange']) {
+    document.addEventListener(evento, syncFullscreenButton);
+  }
   $('#btn-export').addEventListener('click', openExportDialog);
   $('#btn-projects').addEventListener('click', openProjectsDialog);
   $('#job-cancel').addEventListener('click', () => {

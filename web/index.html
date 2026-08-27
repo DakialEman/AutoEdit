@@ -17,7 +17,10 @@
 
   <div class="project-switch">
     <input id="project-name" class="project-name" placeholder="Sin título" spellcheck="false">
-    <button id="btn-projects" class="ghost" title="Cambiar de proyecto">Proyectos ▾</button>
+    <button id="btn-projects" class="projects-btn"
+            title="Cambiar de proyecto, crear uno nuevo o borrar">
+      <span>🗂</span><span>Proyectos</span><span class="chev">▾</span>
+    </button>
   </div>
 
   <div class="topbar-right">
@@ -69,9 +72,12 @@
       <div class="understood" id="understood" hidden></div>
     </div>
 
-    <div class="stage">
+    <div class="stage" id="stage">
       <div class="viewer" id="viewer">
         <video id="preview-video" playsinline></video>
+        <div class="viewer-tools">
+          <button id="btn-fullscreen" class="icon-btn" title="Pantalla completa (F)">⛶</button>
+        </div>
         <div class="viewer-empty" id="viewer-empty">
           <p>Sin vista previa todavía</p>
           <button id="btn-make-preview" class="secondary">Generar vista previa</button>

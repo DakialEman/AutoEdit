@@ -25,7 +25,7 @@ from .ai import planner, prompt as prompt_ai, styles
 from .config import SETTINGS, find_ffmpeg, find_ffprobe
 from .export import FORMATS, capcut, edl, fcpxml
 from .jobs import JOBS
-from .models import Project, StyleSpec, Timeline
+from .models import Asset, Project, StyleSpec, Timeline
 from .render import font_diagnostics, render_timeline
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
@@ -151,6 +151,10 @@ class PatchProject(BaseModel):
     prompt: Optional[str] = None
     style: Optional[dict] = None
     timeline: Optional[dict] = None
+    # `assets` y `meta` permiten devolver el proyecto a un estado anterior,
+    # que es lo que hace el botón «Deshacer» de la interfaz.
+    assets: Optional[list[dict]] = None
+    meta: Optional[dict] = None
 
 
 @app.patch("/api/projects/{project_id}")
@@ -165,9 +169,15 @@ def patch_project(project_id: str, body: PatchProject) -> dict:
             merged = project.style.model_dump()
             merged.update(body.style)
             project.style = StyleSpec(**merged)
+        if body.assets is not None:
+            project.assets = [Asset.model_validate(a) for a in body.assets]
+        if body.meta is not None:
+            project.meta = dict(body.meta)
         if body.timeline is not None:
             project.timeline = Timeline.model_validate(body.timeline)
-            editing.normalize(project, project.timeline)
+        # Los assets pueden haber cambiado, así que se revisa la línea de
+        # tiempo aunque no llegue explícitamente.
+        editing.normalize(project, project.timeline)
         return _project_payload(_save(project))
 
 

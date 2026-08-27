@@ -95,6 +95,43 @@ def test_cada_segmento_referencia_un_material_existente(edited, tmp_path):
                 assert ref in materiales
 
 
+def test_las_rutas_de_windows_se_escriben_con_barras_normales():
+    """CapCut guarda sus rutas con `/`, también en Windows.
+
+    Con barras invertidas rechaza el borrador («el proyecto actual proviene de
+    una ruta inusual»). Aquí se fija el mecanismo que hace la conversión, que
+    en Linux es un no-op y por eso el fallo pasó desapercibido.
+    """
+    from pathlib import PureWindowsPath
+
+    ruta = PureWindowsPath(r"C:\Users\Santiago\AppData\Local\CapCut\proyecto\video.mp4")
+    assert ruta.as_posix() == "C:/Users/Santiago/AppData/Local/CapCut/proyecto/video.mp4"
+    assert "\\" not in ruta.as_posix()
+
+
+def test_el_borrador_no_contiene_ni_una_barra_invertida(edited, tmp_path):
+    """Ninguna ruta del borrador puede llevar `\`, venga de donde venga."""
+    from pathlib import Path
+
+    report = capcut.export_capcut(edited, tmp_path)
+    folder = Path(report["folder"])
+
+    def rutas(nodo, camino=""):
+        if isinstance(nodo, dict):
+            for clave, valor in nodo.items():
+                yield from rutas(valor, f"{camino}.{clave}")
+        elif isinstance(nodo, list):
+            for i, valor in enumerate(nodo):
+                yield from rutas(valor, f"{camino}[{i}]")
+        elif isinstance(nodo, str) and "\\" in nodo:
+            yield camino, nodo
+
+    for nombre in ("draft_content.json", "draft_meta_info.json"):
+        datos = json.loads((folder / nombre).read_text("utf-8"))
+        culpables = list(rutas(datos, nombre))
+        assert not culpables, f"rutas con barra invertida: {culpables}"
+
+
 def test_capcut_usa_rutas_absolutas(edited, tmp_path):
     from pathlib import Path
 

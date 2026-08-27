@@ -41,15 +41,30 @@ export function $(selector) {
 
 // ── Avisos ──────────────────────────────────────────────────
 
-export function toast(message, kind = '', ms = 4200) {
-  const node = el('div', { class: `toast ${kind}` }, message);
-  $('#toasts').appendChild(node);
-  setTimeout(() => {
+export function toast(message, kind = '', ms = 4200, action = null) {
+  const node = el('div', { class: `toast ${kind}` }, el('span', {}, message));
+  let timer = null;
+
+  const dismiss = () => {
+    clearTimeout(timer);
     node.style.transition = 'opacity .25s, transform .25s';
     node.style.opacity = '0';
     node.style.transform = 'translateX(16px)';
     setTimeout(() => node.remove(), 260);
-  }, ms);
+  };
+
+  // Un aviso con acción («Deshacer») sustituye a preguntar antes de hacer algo:
+  // no interrumpe, y deja salida si el clic fue un accidente.
+  if (action) {
+    node.appendChild(el('button', {
+      class: 'toast-action',
+      onclick: () => { dismiss(); action.onClick(); },
+    }, action.label));
+  }
+
+  $('#toasts').appendChild(node);
+  timer = setTimeout(dismiss, ms);
+  node.dismiss = dismiss;
   return node;
 }
 

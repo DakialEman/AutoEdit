@@ -186,19 +186,36 @@ export async function openProjectsDialog() {
   }
   clear(container);
 
-  const list = el('div', { style: { maxHeight: '48vh', overflowY: 'auto', margin: '0 -6px 12px' } });
+  // Crear va arriba del todo: es lo que la gente viene a buscar aquí.
+  const nameInput = el('input', {
+    type: 'text', placeholder: 'Nombre del proyecto nuevo…',
+  });
+  const createButton = el('button', { class: 'primary' }, '+ Crear proyecto');
+  const create = () => { closeModal(); actions.createProject(nameInput.value); };
+  createButton.addEventListener('click', create);
+  nameInput.addEventListener('keydown', (event) => { if (event.key === 'Enter') create(); });
+
+  const list = el('div', { style: { maxHeight: '46vh', overflowY: 'auto', margin: '0 -6px' } });
   for (const item of projects) {
+    const esActual = state.project && item.id === state.project.id;
     const row = el('div', {
-      class: `list-row${state.project && item.id === state.project.id ? ' active' : ''}`,
+      class: `list-row${esActual ? ' active' : ''}`,
       style: { cursor: 'pointer' },
       onclick: () => { closeModal(); actions.openProject(item.id); },
     }, [
       el('span', {}, '🎬'),
       el('div', { class: 'grow' }, [
-        el('div', { class: 'name' }, item.name),
+        el('div', { class: 'name' }, item.name + (esActual ? '  ·  abierto' : '')),
         el('div', { class: 'sub' },
           `${item.assets} archivos · ${item.clips} clips`
           + `${item.style ? ` · ${item.style}` : ''} · ${relative(item.updated_at)}`),
+      ]),
+      el('div', { class: 'row-actions' }, [
+        el('button', {
+          class: 'icon-btn trash',
+          title: 'Borrar este proyecto',
+          onclick: (event) => { event.stopPropagation(); borrarProyecto(item); },
+        }, '🗑'),
       ]),
     ]);
     list.appendChild(row);
@@ -208,17 +225,38 @@ export async function openProjectsDialog() {
       'Todavía no hay proyectos.'));
   }
 
-  const nameInput = el('input', {
-    type: 'text', placeholder: 'Nombre del proyecto nuevo',
-    style: { flex: '1', background: 'var(--bg-input)', border: '1px solid var(--line)', borderRadius: '6px', padding: '8px 10px' },
-  });
-  const createButton = el('button', { class: 'primary' }, 'Crear');
-  const create = () => { closeModal(); actions.createProject(nameInput.value); };
-  createButton.addEventListener('click', create);
-  nameInput.addEventListener('keydown', (event) => { if (event.key === 'Enter') create(); });
-
-  append(container, [list, el('div', { style: { display: 'flex', gap: '8px' } }, [nameInput, createButton])]);
+  append(container, [
+    el('div', { class: 'new-project' }, [nameInput, createButton]),
+    list,
+  ]);
   nameInput.focus();
+}
+
+/** Borra un proyecto. Aquí sí se pregunta: se van archivos del disco. */
+async function borrarProyecto(item) {
+  const ok = await confirmDialog(
+    'Borrar proyecto',
+    `Se borrará «${item.name}» con su caché de render y sus exportaciones, que pueden `
+    + 'ocupar bastante. Esto no tiene vuelta atrás. Tus vídeos y fotos originales no se tocan.',
+    'Borrar',
+  );
+  if (!ok) { openProjectsDialog(); return; }
+
+  const eraElActual = state.project && item.id === state.project.id;
+  try {
+    await api.deleteProject(item.id);
+    toast(`«${item.name}» borrado`, 'ok');
+    if (eraElActual) {
+      const { projects } = await api.projects();
+      closeModal();
+      if (projects.length) await actions.openProject(projects[0].id);
+      else await actions.createProject('');
+      return;
+    }
+  } catch (error) {
+    toastError(error);
+  }
+  openProjectsDialog();
 }
 
 function relative(timestamp) {

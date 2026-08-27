@@ -76,6 +76,25 @@ exportar, CapCut te dirá que faltan archivos. Las rutas usadas quedan listadas 
 Si te llevas el proyecto a otro ordenador, lleva también el material y ponlo en
 la misma ruta, o vuelve a exportar desde AutoEdit en la máquina destino.
 
+## Las rutas van con barras normales
+
+CapCut escribe sus rutas siempre con `/`, también en Windows:
+
+```
+C:/Users/Santiago/AppData/Local/CapCut/User Data/Projects/com.lveditor.draft/MiProyecto
+```
+
+Si el borrador llega con las barras invertidas propias de Windows (`\`), CapCut
+no reconoce el formato y lo rechaza con **«el proyecto actual proviene de una
+ruta inusual y no se puede usar actualmente»**, aunque la carpeta esté
+exactamente donde tiene que estar.
+
+AutoEdit normaliza las cinco rutas del borrador (`draft_fold_path`,
+`draft_root_path`, el `path` de cada vídeo, el de cada audio y el `file_Path`
+de los metadatos), y hay un test que falla si alguna vuelve a colarse con
+barra invertida. Es un fallo invisible cuando se desarrolla en Linux o macOS,
+donde esa conversión no cambia nada.
+
 ## Si no te abre
 
 Por orden de probabilidad:

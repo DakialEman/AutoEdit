@@ -4,7 +4,7 @@ import { api, followJob } from './api.js';
 import {
   KIND_ICON, asset, fmtDuration, fmtSize, musicAsset, state,
 } from './state.js';
-import { $, clear, closeModal, confirmDialog, el, openModal, toast, toastError } from './ui.js';
+import { $, clear, closeModal, el, openModal, toast, toastError } from './ui.js';
 
 let actions = {};
 
@@ -252,18 +252,23 @@ function assetActions(item, isMusic) {
     },
   }, item.enabled ? '👁' : '🚫'));
   buttons.push(el('button', {
-    class: 'icon-btn',
+    class: 'icon-btn trash',
     title: 'Quitar del proyecto',
     onclick: async (event) => {
       event.stopPropagation();
-      const ok = await confirmDialog(
-        'Quitar del proyecto',
-        `«${item.name}» se quitará del proyecto y de la línea de tiempo. El archivo original no se borra.`,
-        'Quitar',
-      );
-      if (!ok) return;
+      // Sin preguntar: se quita y punto. Como el archivo original no se toca,
+      // basta con guardar el estado anterior para poder deshacerlo.
+      const antes = {
+        assets: structuredClone(state.project.assets),
+        timeline: structuredClone(state.project.timeline),
+        meta: structuredClone(state.project.meta),
+      };
       try {
         actions.onProjectChanged(await api.deleteAsset(state.project.id, item.id));
+        toast(`«${item.name}» quitado`, '', 7000, {
+          label: 'Deshacer',
+          onClick: () => actions.restoreSnapshot(antes),
+        });
       } catch (error) { toastError(error); }
     },
   }, '✕'));
