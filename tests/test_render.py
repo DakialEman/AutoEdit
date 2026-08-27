@@ -47,6 +47,9 @@ def material(tmp_path_factory) -> Path:
     _run(["-f", "lavfi",
           "-i", "aevalsrc='0.8*sin(2*PI*180*t)*exp(-9*mod(t,0.5))':d=20:s=44100",
           "-c:a", "libmp3lame", str(directory / "tema.mp3")])
+    # Un .mp4 que solo lleva audio: así llegan las grabaciones de voz del móvil.
+    _run(["-f", "lavfi", "-i", "sine=frequency=330:duration=5",
+          "-c:a", "aac", str(directory / "nota de voz.mp4")])
     return directory
 
 
@@ -54,7 +57,7 @@ def material(tmp_path_factory) -> Path:
 def montado(material):
     project = storage.create_project("Integración")
     added, errors = storage.import_any(project, [str(material)])
-    assert not errors and len(added) == 4
+    assert not errors and len(added) == 5
     storage.analyze_pending(project)
 
     style = get_preset("dynamic")
@@ -89,6 +92,29 @@ def test_el_analisis_rellena_los_datos(montado):
     assert music.analysis.tempo > 0
     assert len(music.analysis.beats) > 10
     assert music.waveform
+
+
+def test_un_mp4_solo_con_audio_se_clasifica_como_audio(montado):
+    """Manda el contenido, no la extensión.
+
+    Un .mp4 sin imagen acababa en la pista de vídeo y el render moría con
+    «Output file does not contain any stream».
+    """
+    nota = next(a for a in montado.assets if a.name.startswith("nota de voz"))
+    assert nota.kind == "audio"
+    assert nota.has_audio and not nota.has_video
+
+    en_video = [
+        c for t in montado.timeline.tracks if t.kind in ("video", "overlay")
+        for c in t.clips if c.asset_id == nota.id
+    ]
+    assert not en_video, "un archivo sin imagen no puede ir en la pista de vídeo"
+
+
+def test_no_se_puede_meter_un_audio_en_la_pista_de_video(montado):
+    nota = next(a for a in montado.assets if a.name.startswith("nota de voz"))
+    with pytest.raises(editing.EditError):
+        editing.add_clip(montado, montado.timeline, nota.id)
 
 
 def test_detecta_el_audio_de_los_videos(montado):

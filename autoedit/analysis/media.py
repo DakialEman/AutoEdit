@@ -441,15 +441,27 @@ VIDEO_EXT = {".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v", ".mpg", ".mpeg", "
 
 
 def _guess_kind(path: Path, info: ff.MediaInfo) -> str:
+    """Decide qué es un archivo mirando **lo que lleva dentro**, no su extensión.
+
+    Un `.mp4` puede contener solo audio: las grabaciones de voz del móvil y los
+    audios de WhatsApp llegan así. Si nos fiáramos de la extensión acabarían en
+    la pista de vídeo, y al renderizar FFmpeg se queja de que el archivo de
+    salida no tiene ningún stream.
+    """
     ext = path.suffix.lower()
     if ext in IMAGE_EXT:
         return "image"
+
+    if info.has_video:
+        # Sin duración es una imagen dentro de un contenedor de vídeo.
+        return "video" if info.duration > 0.05 else "image"
+    if info.has_audio:
+        return "audio"
+
+    # El sondeo no encontró nada (archivo corrupto, o formato que este FFmpeg
+    # no sabe leer): como último recurso, la extensión.
     if ext in AUDIO_EXT:
         return "audio"
     if ext in VIDEO_EXT:
         return "video"
-    if info.has_video and info.duration > 0.05:
-        return "video"
-    if info.has_video:
-        return "image"
     return "audio"

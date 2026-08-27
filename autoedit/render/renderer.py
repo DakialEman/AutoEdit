@@ -558,6 +558,12 @@ def render_timeline(
             raise ValueError(f"El clip {clip.id} apunta a un archivo que ya no está en el proyecto.")
         if not Path(asset.path).exists():
             raise ValueError(f"No se encuentra el archivo «{asset.name}» en {asset.path}")
+        if asset.kind == "audio" or (asset.kind == "video" and not asset.has_video):
+            raise ValueError(
+                f"«{asset.name}» no contiene imagen, solo audio, así que no puede ir "
+                "en la pista de vídeo. Quítalo del proyecto y vuelve a añadirlo: "
+                "AutoEdit lo reconocerá como audio."
+            )
         path, count, cached = render_segment(asset, clip, width, height, fps, cache)
         segments.append(path)
         frames.append(count)

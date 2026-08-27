@@ -362,6 +362,12 @@ def validate(project: Project, timeline: Timeline) -> list[str]:
                 problems.append(f"No se encuentra el archivo «{asset.name}».")
             if clip.duration < MIN_CLIP:
                 problems.append(f"El clip de «{asset.name}» es demasiado corto.")
+            if track.kind in ("video", "overlay") and asset.kind == "audio":
+                problems.append(
+                    f"«{asset.name}» no tiene imagen (es solo audio) y está en la pista "
+                    "de vídeo. Quítalo del proyecto y vuelve a añadirlo: se colocará "
+                    "como música."
+                )
     if timeline.duration <= 0:
         problems.append("La duración total es cero.")
     return problems

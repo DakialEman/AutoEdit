@@ -236,13 +236,25 @@ def refresh_asset(project: Project, asset_id: str) -> Asset:
     asset = project.asset(asset_id)
     if asset is None:
         raise StorageError("Ese archivo no está en el proyecto")
-    fresh = media.probe_to_asset(asset.path, asset.kind)
+    # Sin `kind_hint`: se vuelve a decidir qué es el archivo. Así se corrigen
+    # los proyectos donde algo quedó mal clasificado (por ejemplo un .mp4 que
+    # en realidad solo lleva audio).
+    fresh = media.probe_to_asset(asset.path)
+    kind_anterior = asset.kind
+    asset.kind = fresh.kind
     asset.duration = fresh.duration
     asset.width, asset.height = fresh.width, fresh.height
     asset.fps = fresh.fps
     asset.has_audio, asset.has_video = fresh.has_audio, fresh.has_video
     asset.size, asset.source_mtime = fresh.size, fresh.source_mtime
     asset.thumbnail = None
+
+    if asset.kind != kind_anterior and asset.kind == "audio":
+        # Ya no puede estar en la pista de vídeo.
+        for track in project.timeline.tracks:
+            if track.kind in ("video", "overlay"):
+                track.clips = [c for c in track.clips if c.asset_id != asset.id]
+
     analyze_asset(project, asset)
     return asset
 
