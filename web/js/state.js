@@ -62,6 +62,23 @@ export function textClips() {
   return t ? [...t.texts].sort((a, b) => a.start - b.start) : [];
 }
 
+/** Todas las pistas que llevan sonido: la música y las que añadas. */
+export function audioTracks() {
+  const tl = timeline();
+  if (!tl) return [];
+  return tl.tracks.filter((t) => ['music', 'voice', 'sfx'].includes(t.kind));
+}
+
+export function findClip(clipId) {
+  const tl = timeline();
+  if (!tl) return { track: null, clip: null };
+  for (const track of tl.tracks) {
+    const clip = track.clips.find((c) => c.id === clipId);
+    if (clip) return { track, clip };
+  }
+  return { track: null, clip: null };
+}
+
 export function musicClips() {
   const t = track('music');
   return t ? [...t.clips].sort((a, b) => a.start - b.start) : [];

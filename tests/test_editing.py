@@ -169,3 +169,89 @@ def test_una_transicion_gigante_se_recorta_sola(edited):
     objetivo.transition_in = Transition(kind="dissolve", duration=99)
     editing.normalize(edited, edited.timeline)
     assert_encadenado(edited)
+
+
+# ── Pistas de audio ─────────────────────────────────────────
+
+
+def test_se_pueden_apilar_varias_pistas_de_audio(edited):
+    audio = next(a for a in edited.assets if a.kind == "audio")
+    primera = editing.add_audio_track(edited.timeline, "Voz")
+    segunda = editing.add_audio_track(edited.timeline)
+    assert primera.id != segunda.id
+    assert segunda.name == "Audio 2"
+
+    editing.add_audio_clip(edited, edited.timeline, primera.id, audio.id, start=2.0)
+    editing.add_audio_clip(edited, edited.timeline, segunda.id, audio.id, start=5.5)
+    assert primera.clips[0].start == 2.0
+    assert segunda.clips[0].start == 5.5
+
+
+def test_las_pistas_nuevas_no_se_recolocan_solas(edited):
+    """La música se ajusta al vídeo; lo que colocas tú se queda donde lo pongas."""
+    audio = next(a for a in edited.assets if a.kind == "audio")
+    track = editing.add_audio_track(edited.timeline)
+    editing.add_audio_clip(edited, edited.timeline, track.id, audio.id, start=3.0)
+    editing.normalize(edited, edited.timeline)
+    assert track.clips[0].start == 3.0
+
+
+def test_mover_un_audio_en_el_tiempo(edited):
+    audio = next(a for a in edited.assets if a.kind == "audio")
+    track = editing.add_audio_track(edited.timeline)
+    clip = editing.add_audio_clip(edited, edited.timeline, track.id, audio.id, start=1.0)
+    editing.update_clip(edited, edited.timeline, clip.id, {"start": 4.25})
+    assert clip.start == 4.25
+
+
+def test_un_clip_de_video_no_se_puede_mover_asi(edited):
+    """La pista de vídeo va encadenada: su posición la calcula el relayout."""
+    clip = clips(edited)[1]
+    antes = clip.start
+    editing.update_clip(edited, edited.timeline, clip.id, {"start": 99})
+    assert clip.start == antes
+
+
+def test_todas_las_pistas_llegan_a_la_mezcla(edited):
+    from autoedit.render.renderer import collect_audio
+
+    audio = next(a for a in edited.assets if a.kind == "audio")
+    track = editing.add_audio_track(edited.timeline)
+    editing.add_audio_clip(edited, edited.timeline, track.id, audio.id, start=1.5)
+
+    piezas = collect_audio(edited, edited.timeline)
+    assert len(piezas) >= 2
+    assert any(p.is_music for p in piezas)
+    assert any(not p.is_music and p.start == 1.5 for p in piezas)
+
+
+def test_silenciar_una_pista_la_saca_de_la_mezcla(edited):
+    from autoedit.render.renderer import collect_audio
+
+    audio = next(a for a in edited.assets if a.kind == "audio")
+    track = editing.add_audio_track(edited.timeline)
+    editing.add_audio_clip(edited, edited.timeline, track.id, audio.id, start=1.0)
+    assert len(collect_audio(edited, edited.timeline)) >= 2
+
+    editing.update_track(edited.timeline, track.id, {"muted": True})
+    assert not any(p.start == 1.0 and not p.is_music
+                   for p in collect_audio(edited, edited.timeline))
+
+
+def test_borrar_una_pista(edited):
+    track = editing.add_audio_track(edited.timeline)
+    editing.remove_track(edited.timeline, track.id)
+    assert all(t.id != track.id for t in edited.timeline.tracks)
+
+
+def test_la_pista_de_video_no_se_puede_borrar(edited):
+    video = edited.timeline.track("video")
+    with pytest.raises(editing.EditError):
+        editing.remove_track(edited.timeline, video.id)
+
+
+def test_no_se_puede_poner_un_video_sin_audio_en_una_pista_de_audio(edited):
+    mudo = next(a for a in edited.assets if a.kind == "image")
+    track = editing.add_audio_track(edited.timeline)
+    with pytest.raises(editing.EditError):
+        editing.add_audio_clip(edited, edited.timeline, track.id, mudo.id)

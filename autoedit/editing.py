@@ -233,6 +233,10 @@ def update_clip(project: Project, timeline: Timeline, clip_id: str, changes: dic
             clip.transition_in = Transition(
                 kind=kind, duration=0.0 if kind == "cut" else round(max(0.05, seconds), 3)
             )
+        elif key == "start" and track.kind in ("music", "voice", "sfx"):
+            # En las pistas de audio cada clip se queda donde lo pongas; solo
+            # la pista de vídeo va encadenada.
+            clip.start = round(max(0.0, float(value)), 3)
         elif key == "duration":
             set_duration(project, timeline, clip_id, float(value))
         elif key == "in_point":
@@ -322,6 +326,69 @@ def set_music(project: Project, timeline: Timeline, asset_id: Optional[str]) -> 
         )
     )
     sync_music(project, timeline)
+
+
+def add_audio_track(timeline: Timeline, name: str = "") -> Track:
+    """Añade una pista de audio libre, encima de la música.
+
+    Se usa `voice` y no `music` a propósito: la de música se recorta sola a la
+    duración del vídeo, y una pista que tú colocas a mano no debe moverse.
+    Además, lo que suene aquí hace que la música baje automáticamente.
+    """
+    existentes = sum(1 for t in timeline.tracks if t.kind in ("voice", "sfx"))
+    track = Track(kind="voice", name=name or f"Audio {existentes + 1}")
+    timeline.tracks.append(track)
+    return track
+
+
+def find_track(timeline: Timeline, track_id: str) -> Track:
+    for track in timeline.tracks:
+        if track.id == track_id:
+            return track
+    raise EditError("Esa pista ya no existe.")
+
+
+def remove_track(timeline: Timeline, track_id: str) -> None:
+    track = find_track(timeline, track_id)
+    if track.kind == "video":
+        raise EditError("La pista de vídeo no se puede quitar.")
+    timeline.tracks = [t for t in timeline.tracks if t.id != track_id]
+
+
+def update_track(timeline: Timeline, track_id: str, changes: dict) -> Track:
+    track = find_track(timeline, track_id)
+    if "name" in changes:
+        track.name = str(changes["name"])[:40]
+    if "volume" in changes:
+        track.volume = max(0.0, min(4.0, float(changes["volume"])))
+    if "muted" in changes:
+        track.muted = bool(changes["muted"])
+    if "hidden" in changes:
+        track.hidden = bool(changes["hidden"])
+    return track
+
+
+def add_audio_clip(
+    project: Project, timeline: Timeline, track_id: str, asset_id: str, start: float = 0.0
+) -> Clip:
+    """Coloca un audio en una pista concreta, en el segundo que se indique."""
+    track = find_track(timeline, track_id)
+    if track.kind not in ("music", "voice", "sfx"):
+        raise EditError("Esa pista no admite audio.")
+    asset = project.asset(asset_id)
+    if asset is None:
+        raise EditError("Ese archivo no está en el proyecto.")
+    if not asset.has_audio and asset.kind != "audio":
+        raise EditError(f"«{asset.name}» no tiene audio.")
+
+    clip = Clip(
+        asset_id=asset_id,
+        start=round(max(0.0, start), 3),
+        duration=round(max(MIN_CLIP, asset.duration or 5.0), 3),
+        volume=1.0,
+    )
+    track.clips.append(clip)
+    return clip
 
 
 def set_track_flag(timeline: Timeline, kind: str, muted: Optional[bool], hidden: Optional[bool]) -> Track:

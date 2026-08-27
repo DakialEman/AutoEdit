@@ -496,6 +496,42 @@ def delete_text(project_id: str, text_id: str) -> dict:
     return _edit(project_id, lambda p: editing.delete_text(p.timeline, text_id))
 
 
+class TrackBody(BaseModel):
+    name: str = ""
+
+
+class TrackUpdate(BaseModel):
+    changes: dict[str, Any] = {}
+
+
+class AudioClipBody(BaseModel):
+    asset_id: str
+    start: float = 0.0
+
+
+@app.post("/api/projects/{project_id}/tracks")
+def post_track(project_id: str, body: TrackBody) -> dict:
+    return _edit(project_id, lambda p: editing.add_audio_track(p.timeline, body.name))
+
+
+@app.patch("/api/projects/{project_id}/tracks/{track_id}")
+def patch_track(project_id: str, track_id: str, body: TrackUpdate) -> dict:
+    return _edit(project_id, lambda p: editing.update_track(p.timeline, track_id, body.changes))
+
+
+@app.delete("/api/projects/{project_id}/tracks/{track_id}")
+def delete_track(project_id: str, track_id: str) -> dict:
+    return _edit(project_id, lambda p: editing.remove_track(p.timeline, track_id))
+
+
+@app.post("/api/projects/{project_id}/tracks/{track_id}/clips")
+def post_track_clip(project_id: str, track_id: str, body: AudioClipBody) -> dict:
+    return _edit(
+        project_id,
+        lambda p: editing.add_audio_clip(p, p.timeline, track_id, body.asset_id, body.start),
+    )
+
+
 @app.post("/api/projects/{project_id}/music")
 def post_music(project_id: str, body: MusicBody) -> dict:
     return _edit(project_id, lambda p: editing.set_music(p, p.timeline, body.asset_id))

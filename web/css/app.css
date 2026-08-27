@@ -430,6 +430,20 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .clip.text-clip { background: rgba(255, 169, 77, .18); border-color: rgba(255, 169, 77, .4); align-items: center; }
 .clip.audio-clip .clip-label, .clip.text-clip .clip-label { background: none; text-shadow: none; }
 
+.track-tag {
+  position: sticky; left: 0; z-index: 4;
+  display: flex; align-items: center; gap: 5px;
+  padding: 2px 8px 2px 4px;
+  font-size: 10.5px; color: var(--text-faint);
+  background: linear-gradient(90deg, var(--bg-panel) 70%, transparent);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.track-row.drop-target { background: rgba(51, 195, 160, .10); border-radius: 4px; }
+.track-row.muted-row { opacity: .45; }
+.audio-clip { cursor: grab; }
+.audio-clip.dragging { cursor: grabbing; opacity: .7; }
+
 .wave { position: absolute; inset: 0; display: flex; align-items: center; gap: 1px; padding: 0 2px; opacity: .5; }
 .wave i { flex: 1; background: var(--audio); border-radius: 1px; min-height: 2px; }
 

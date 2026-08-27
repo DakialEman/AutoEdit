@@ -3,7 +3,7 @@
 import { api } from './api.js';
 import {
   ASPECTS, EFFECT_LABELS, FIT_LABELS, GRADE_LABELS, TRANSITION_LABELS,
-  asset, fmtDuration, musicAsset, musicClips, selectedClip, selectedText,
+  asset, findClip, fmtDuration, musicAsset, musicClips, selectedClip, selectedText,
   state, totalDuration,
 } from './state.js';
 import {
@@ -27,7 +27,7 @@ export function renderInspector() {
 
   if (clip) { title.textContent = 'Clip'; body.append(...clipPanel(clip)); }
   else if (text) { title.textContent = 'Texto'; body.append(...textPanel(text)); }
-  else if (state.selection.type === 'music') { title.textContent = 'Música'; body.append(...musicPanel()); }
+  else if (state.selection.type === 'audio') { title.textContent = 'Audio'; body.append(...audioPanel()); }
   else { title.textContent = 'Montaje'; body.append(...globalPanel()); }
 }
 
@@ -229,40 +229,81 @@ function textPanel(text) {
 
 // ── Música ──────────────────────────────────────────────────
 
-function musicPanel() {
-  const clip = musicClips()[0];
-  const source = musicAsset();
+function audioPanel() {
+  const { track, clip } = findClip(state.selection.id);
   const timeline = state.project.timeline;
   const nodes = [];
+  if (!clip || !track) return [el('div', { class: 'inspector-empty' }, 'Ese audio ya no está.')];
 
-  nodes.push(el('div', { style: { fontSize: '12.5px' } }, source?.name || 'sin música'));
-  if (source?.analysis?.tempo) {
-    nodes.push(el('div', { class: 'hint', style: { marginBottom: '8px' } },
-      `${Math.round(source.analysis.tempo)} BPM detectados · ${source.analysis.beats.length} pulsos`));
+  const source = asset(clip.asset_id);
+  const esMusica = track.kind === 'music';
+
+  nodes.push(el('div', { style: { fontSize: '12.5px' } }, source?.name || 'audio'));
+  nodes.push(el('div', { class: 'hint', style: { marginBottom: '8px' } },
+    (esMusica ? 'Música del montaje' : `Pista «${track.name}»`)
+    + (source?.analysis?.tempo ? ` · ${Math.round(source.analysis.tempo)} BPM` : '')));
+
+  nodes.push(field('Volumen de este clip',
+    slider({
+      min: 0, max: 2, step: 0.02, value: clip.volume,
+      oninput: (e) => { e.target.closest('.field').querySelector('b').textContent = `${Math.round(+e.target.value * 100)}%`; },
+      onchange: (e) => actions.patchClip(clip.id, { volume: +e.target.value }),
+    }),
+    `${Math.round(clip.volume * 100)}%`));
+
+  if (!esMusica) {
+    nodes.push(el('div', { class: 'row2' }, [
+      field('Empieza en', el('input', {
+        type: 'number', value: clip.start.toFixed(2), step: 0.1, min: 0,
+        onchange: (e) => actions.patchClip(clip.id, { start: +e.target.value }),
+      })),
+      field('Dura', el('input', {
+        type: 'number', value: clip.duration.toFixed(2), step: 0.1, min: 0.1,
+        onchange: (e) => actions.patchClip(clip.id, { duration: +e.target.value }),
+      })),
+    ]));
+    nodes.push(el('div', { class: 'hint' }, 'También puedes arrastrarlo en la línea de tiempo.'));
   }
 
-  nodes.push(field('Volumen de la música',
-    slider({
-      min: 0, max: 1.5, step: 0.02, value: timeline.music_volume,
-      oninput: (e) => { e.target.closest('.field').querySelector('b').textContent = `${Math.round(+e.target.value * 100)}%`; },
-      onchange: (e) => actions.patchTimeline({ music_volume: +e.target.value }),
-    }),
-    `${Math.round(timeline.music_volume * 100)}%`));
-
-  if (clip && source) {
-    nodes.push(field('Empieza la canción en',
+  if (source && source.duration > 0) {
+    nodes.push(field('Empieza el archivo en',
       slider({
-        min: 0, max: Math.max(0.1, source.duration - 1), step: 0.1, value: clip.in_point,
+        min: 0, max: Math.max(0.1, source.duration - 0.5), step: 0.1, value: clip.in_point,
         oninput: (e) => { e.target.closest('.field').querySelector('b').textContent = `${(+e.target.value).toFixed(1)} s`; },
-        onchange: (e) => actions.setMusicIn(+e.target.value),
+        onchange: (e) => actions.patchClip(clip.id, { in_point: +e.target.value }),
       }),
       `${clip.in_point.toFixed(1)} s`));
   }
 
-  nodes.push(checkbox('Bajar la música cuando suena el audio original',
-    timeline.duck_music, (e) => actions.patchTimeline({ duck_music: e.target.checked })));
+  nodes.push(el('div', { class: 'section-title' }, 'La pista entera'));
+  nodes.push(field('Volumen de la pista',
+    slider({
+      min: 0, max: 2, step: 0.02, value: track.volume,
+      oninput: (e) => { e.target.closest('.field').querySelector('b').textContent = `${Math.round(+e.target.value * 100)}%`; },
+      onchange: (e) => actions.patchTrack(track.id, { volume: +e.target.value }),
+    }),
+    `${Math.round(track.volume * 100)}%`));
+  nodes.push(checkbox('Silenciar la pista', track.muted,
+    (e) => actions.patchTrack(track.id, { muted: e.target.checked })));
+
+  if (esMusica) {
+    nodes.push(field('Volumen general de la música',
+      slider({
+        min: 0, max: 1.5, step: 0.02, value: timeline.music_volume,
+        oninput: (e) => { e.target.closest('.field').querySelector('b').textContent = `${Math.round(+e.target.value * 100)}%`; },
+        onchange: (e) => actions.patchTimeline({ music_volume: +e.target.value }),
+      }),
+      `${Math.round(timeline.music_volume * 100)}%`));
+    nodes.push(checkbox('Bajar la música cuando suena otro audio',
+      timeline.duck_music, (e) => actions.patchTimeline({ duck_music: e.target.checked })));
+  }
+
   nodes.push(el('div', { class: 'btn-row' }, [
-    el('button', { class: 'ghost small danger', onclick: () => actions.setMusic(null) }, 'Quitar la música'),
+    el('button', { class: 'ghost small danger', onclick: () => actions.deleteClip(clip.id) },
+      'Quitar este audio'),
+    esMusica ? null : el('button', {
+      class: 'ghost small danger', onclick: () => actions.deleteTrack(track.id),
+    }, 'Borrar la pista'),
   ]));
   return nodes;
 }

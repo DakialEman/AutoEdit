@@ -1,7 +1,7 @@
 // Línea de tiempo: dibujo de las pistas, selección y reordenación.
 
 import {
-  TRANSITION_LABELS, asset, fmtDuration, musicClips, select, state,
+  TRANSITION_LABELS, asset, audioTracks, fmtDuration, musicClips, select, state,
   textClips, totalDuration, videoClips,
 } from './state.js';
 import { $, clear, el } from './ui.js';
@@ -70,8 +70,7 @@ export function renderTimeline() {
   rows.appendChild(videoRow(clips));
   const texts = textClips();
   if (texts.length) rows.appendChild(textRow(texts));
-  const music = musicClips();
-  if (music.length) rows.appendChild(musicRow(music));
+  for (const track of audioTracks()) rows.appendChild(audioRow(track));
 }
 
 function statChunk(value, label) {
@@ -220,35 +219,104 @@ function textRow(texts) {
   return row;
 }
 
-function musicRow(clips) {
-  const row = el('div', { class: 'track-row music-row' });
-  for (const clip of clips) {
-    const source = asset(clip.asset_id);
-    const node = el('div', {
-      class: 'clip audio-clip'
-        + (state.selection.type === 'music' && state.selection.id === clip.id ? ' selected' : ''),
-      style: {
-        left: `${clip.start * state.zoom}px`,
-        width: `${Math.max(clip.duration * state.zoom, 10)}px`,
-      },
-      title: source?.name || 'música',
-    });
-    const wave = source?.waveform || [];
-    if (wave.length) {
-      const visible = Math.min(wave.length, Math.max(12, Math.floor(clip.duration * state.zoom / 3)));
-      const strip = el('div', { class: 'wave' });
-      const startIndex = Math.floor((clip.in_point / Math.max(source.duration, 0.01)) * wave.length);
-      for (let i = 0; i < visible; i += 1) {
-        const value = wave[(startIndex + Math.floor(i * wave.length / visible / 2)) % wave.length] || 0;
-        strip.appendChild(el('i', { style: { height: `${Math.max(6, value * 100)}%` } }));
-      }
-      node.appendChild(strip);
-    }
-    node.appendChild(el('div', { class: 'clip-label' }, source?.name || 'música'));
-    node.addEventListener('click', (event) => { event.stopPropagation(); select('music', clip.id); });
-    row.appendChild(node);
+function audioRow(track) {
+  const row = el('div', {
+    class: 'track-row music-row',
+    dataset: { trackId: track.id },
+    title: track.name || 'audio',
+  });
+
+  if (track.muted) row.classList.add('muted-row');
+  row.appendChild(el('div', { class: 'track-tag' }, [
+    el('span', {}, track.kind === 'music' ? '♫' : '🎙'),
+    el('span', {}, track.name || (track.kind === 'music' ? 'Música' : 'Audio')),
+  ]));
+
+  for (const clip of track.sorted ? track.sorted : [...track.clips].sort((a, b) => a.start - b.start)) {
+    row.appendChild(audioClip(track, clip));
   }
+
+  // Soltar aquí un audio de la biblioteca lo coloca en ese segundo.
+  row.addEventListener('dragover', (event) => {
+    if (event.dataTransfer.types.includes('text/autoedit-asset')) {
+      event.preventDefault();
+      row.classList.add('drop-target');
+    }
+  });
+  row.addEventListener('dragleave', () => row.classList.remove('drop-target'));
+  row.addEventListener('drop', (event) => {
+    row.classList.remove('drop-target');
+    const assetId = event.dataTransfer.getData('text/autoedit-asset');
+    if (!assetId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = row.getBoundingClientRect();
+    actions.addAudioClip(track.id, assetId, Math.max(0, (event.clientX - rect.left) / state.zoom));
+  });
   return row;
+}
+
+function audioClip(track, clip) {
+  const source = asset(clip.asset_id);
+  const node = el('div', {
+    class: 'clip audio-clip'
+      + (state.selection.type === 'audio' && state.selection.id === clip.id ? ' selected' : ''),
+    style: {
+      left: `${clip.start * state.zoom}px`,
+      width: `${Math.max(clip.duration * state.zoom, 10)}px`,
+    },
+    title: `${source?.name || 'audio'} · arrastra para moverlo`,
+  });
+
+  const wave = source?.waveform || [];
+  if (wave.length) {
+    const visible = Math.min(wave.length, Math.max(12, Math.floor(clip.duration * state.zoom / 3)));
+    const strip = el('div', { class: 'wave' });
+    const from = Math.floor((clip.in_point / Math.max(source.duration, 0.01)) * wave.length);
+    for (let i = 0; i < visible; i += 1) {
+      const value = wave[(from + Math.floor(i * wave.length / visible / 2)) % wave.length] || 0;
+      strip.appendChild(el('i', { style: { height: `${Math.max(6, value * 100)}%` } }));
+    }
+    node.appendChild(strip);
+  }
+  node.appendChild(el('div', { class: 'clip-label' }, source?.name || 'audio'));
+
+  node.addEventListener('click', (event) => { event.stopPropagation(); select('audio', clip.id); });
+  if (track.kind !== 'music') attachAudioDrag(node, clip);
+  return node;
+}
+
+/** Arrastrar horizontalmente un audio para moverlo en el tiempo. */
+function attachAudioDrag(node, clip) {
+  node.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    select('audio', clip.id);
+    const inicioRaton = event.clientX;
+    const inicioClip = clip.start;
+    let destino = inicioClip;
+    node.classList.add('dragging');
+
+    // Los oyentes van en la ventana, no en el nodo: al guardar, la línea de
+    // tiempo se redibuja y el nodo original desaparece a media acción.
+    const mover = (e) => {
+      destino = Math.max(0, inicioClip + (e.clientX - inicioRaton) / state.zoom);
+      node.style.left = `${destino * state.zoom}px`;
+    };
+    const soltar = () => {
+      window.removeEventListener('pointermove', mover);
+      window.removeEventListener('pointerup', soltar);
+      window.removeEventListener('pointercancel', soltar);
+      node.classList.remove('dragging');
+      if (Math.abs(destino - inicioClip) > 0.02) {
+        actions.patchClip(clip.id, { start: Math.round(destino * 1000) / 1000 });
+      }
+    };
+    window.addEventListener('pointermove', mover);
+    window.addEventListener('pointerup', soltar);
+    window.addEventListener('pointercancel', soltar);
+  });
 }
 
 // ── Cursor ──────────────────────────────────────────────────

@@ -200,6 +200,30 @@ const actions = {
     } catch (error) { toastError(error); }
   },
 
+  async addTrack() {
+    try {
+      setProject(await api.addTrack(state.project.id, ''));
+      toast('Pista de audio añadida. Arrastra un audio de la izquierda a esa fila.', 'ok', 6000);
+    } catch (error) { toastError(error); }
+  },
+  async patchTrack(trackId, changes) {
+    try { setProject(await api.patchTrack(state.project.id, trackId, changes)); }
+    catch (error) { toastError(error); }
+  },
+  async deleteTrack(trackId) {
+    try {
+      select(null, null);
+      setProject(await api.deleteTrack(state.project.id, trackId));
+      toast('Pista borrada', 'ok');
+    } catch (error) { toastError(error); }
+  },
+  async addAudioClip(trackId, assetId, start) {
+    try {
+      setProject(await api.addTrackClip(state.project.id, trackId, assetId, start));
+      toast('Audio colocado', 'ok');
+    } catch (error) { toastError(error); }
+  },
+
   async setMusic(assetId) {
     try {
       setProject(await api.setMusic(state.project.id, assetId));
@@ -483,6 +507,7 @@ async function boot() {
   $('#btn-preview').addEventListener('click', makePreview);
   $('#btn-make-preview').addEventListener('click', makePreview);
   $('#btn-refresh-preview').addEventListener('click', makePreview);
+  $('#btn-add-track').addEventListener('click', () => actions.addTrack());
   $('#btn-fullscreen').addEventListener('click', toggleFullscreen);
   for (const evento of ['fullscreenchange', 'webkitfullscreenchange']) {
     document.addEventListener(evento, syncFullscreenButton);

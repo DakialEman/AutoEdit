@@ -67,6 +67,12 @@ export const api = {
 
   setMusic: (id, assetId) => request('POST', `/api/projects/${id}/music`, { asset_id: assetId }),
 
+  addTrack: (id, name) => request('POST', `/api/projects/${id}/tracks`, { name }),
+  patchTrack: (id, trackId, changes) => request('PATCH', `/api/projects/${id}/tracks/${trackId}`, { changes }),
+  deleteTrack: (id, trackId) => request('DELETE', `/api/projects/${id}/tracks/${trackId}`),
+  addTrackClip: (id, trackId, assetId, start) =>
+    request('POST', `/api/projects/${id}/tracks/${trackId}/clips`, { asset_id: assetId, start }),
+
   render: (id, preview) => request('POST', `/api/projects/${id}/render`, { preview }),
   export: (id, body) => request('POST', `/api/projects/${id}/export`, body),
   exports: (id) => request('GET', `/api/projects/${id}/exports`),
