@@ -19,6 +19,15 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+def _utf8_console() -> None:
+    """La consola de Windows no habla UTF-8 cuando la salida va a una tubería."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError, OSError):
+            pass
+
 PORT = 8799
 
 
@@ -83,6 +92,7 @@ def _check_serve(exe: Path) -> None:
 
 
 def main() -> int:
+    _utf8_console()
     exe = _binary()
     print(f"\n  🎬  Probando {exe.name} en {platform.system()} {platform.machine()}\n")
     _check_doctor(exe)

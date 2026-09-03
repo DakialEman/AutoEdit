@@ -19,6 +19,15 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+def _utf8_console() -> None:
+    """La consola de Windows no habla UTF-8 cuando la salida va a una tubería."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError, OSError):
+            pass
+
 SPEC = ROOT / "packaging" / "autoedit.spec"
 DIST = ROOT / "dist"
 BUILD = ROOT / "build"
@@ -63,6 +72,7 @@ def _ensure_requirements(auto_install: bool) -> None:
 
 
 def main() -> int:
+    _utf8_console()
     parser = argparse.ArgumentParser(description="Construye el ejecutable de AutoEdit")
     parser.add_argument("--no-install", action="store_true",
                         help="No instalar dependencias que falten, solo avisar")

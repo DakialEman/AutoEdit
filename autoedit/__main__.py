@@ -143,9 +143,25 @@ def _cli_doctor(_args: argparse.Namespace) -> int:
     return 0
 
 
+def _utf8_console() -> None:
+    """Evita que un acento o un emoji tumben el programa.
+
+    Con la salida redirigida a un archivo o a una tubería, Python no usa UTF-8
+    sino la codificación regional del sistema —cp1252 en un Windows español—,
+    donde un simple `✓` no existe y levanta UnicodeEncodeError. `replace` deja
+    además una salida legible en las consolas antiguas en vez de reventar.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError, OSError):
+            pass  # Salida sustituida por otra cosa: no hay nada que ajustar.
+
+
 def main(argv: list[str] | None = None) -> int:
     # PyInstaller relanza el propio ejecutable para crear procesos hijo.
     multiprocessing.freeze_support()
+    _utf8_console()
 
     parser = argparse.ArgumentParser(prog="autoedit", description="Editor de vídeo automático y local")
     sub = parser.add_subparsers(dest="command")
