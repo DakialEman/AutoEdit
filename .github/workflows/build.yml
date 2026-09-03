@@ -25,14 +25,19 @@ jobs:
   build:
     name: ${{ matrix.nombre }}
     runs-on: ${{ matrix.os }}
+    # Una construcción entera lleva un par de minutos. Si pasa de esto, es que
+    # el runner se ha quedado colgado, y más vale fallar que encallar el PR.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: windows-latest
             nombre: Windows (x64)
-          - os: macos-13
+          - os: macos-15-intel
             nombre: macOS (Intel)
+            # `macos-13` se quedó sin runners: los trabajos se encolaban y no
+            # los recogía nadie. Ésta es la imagen de Intel vigente.
           - os: macos-14
             nombre: macOS (Apple Silicon)
           - os: ubuntu-22.04
