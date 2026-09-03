@@ -1,13 +1,22 @@
 name: Ejecutables
 
 # Un ejecutable solo se construye desde su propio sistema, así que cada uno sale
-# de un runner distinto. Se lanza a mano desde la pestaña Actions, o solo con
-# publicar una etiqueta (`git tag v1.0.0 && git push --tags`), y en ese caso los
-# binarios se adjuntan a la release.
+# de un runner distinto: el .exe de Windows no se puede hacer desde Linux ni al
+# revés. Se lanza a mano desde la pestaña Actions, al publicar una etiqueta
+# (`git tag v1.0.0 && git push --tags`), y también en las ramas y pull requests
+# que tocan algo de lo que acaba dentro del binario — así se sabe que sigue
+# construyendo y arrancando en los tres sistemas antes de publicar nada.
 on:
   workflow_dispatch:
   push:
     tags: ["v*"]
+  pull_request:
+    paths:
+      - "autoedit/**"
+      - "web/**"
+      - "packaging/**"
+      - "requirements.txt"
+      - ".github/workflows/build.yml"
 
 permissions:
   contents: write
