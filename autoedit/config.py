@@ -9,8 +9,31 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+
+
+def frozen() -> bool:
+    """¿Estamos dentro del ejecutable empaquetado?"""
+    return getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
+
+
+def bundle_root() -> Path:
+    """Carpeta donde viven los recursos (la interfaz web, sobre todo).
+
+    En el ejecutable, PyInstaller los extrae a una carpeta temporal que anuncia
+    en `sys._MEIPASS`. Instalado con pip o desde el repositorio, cuelgan de la
+    raíz del proyecto.
+    """
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        return Path(meipass)
+    return Path(__file__).resolve().parent.parent
+
+
+def web_dir() -> Path:
+    return bundle_root() / "web"
 
 
 def _default_home() -> Path:

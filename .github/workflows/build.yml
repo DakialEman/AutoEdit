@@ -1,0 +1,80 @@
+name: Ejecutables
+
+# Un ejecutable solo se construye desde su propio sistema, así que cada uno sale
+# de un runner distinto. Se lanza a mano desde la pestaña Actions, o solo con
+# publicar una etiqueta (`git tag v1.0.0 && git push --tags`), y en ese caso los
+# binarios se adjuntan a la release.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.nombre }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            nombre: Windows (x64)
+          - os: macos-13
+            nombre: macOS (Intel)
+          - os: macos-14
+            nombre: macOS (Apple Silicon)
+          - os: ubuntu-22.04
+            nombre: Linux (x64)
+            # Se construye sobre la glibc más antigua que sigue con soporte:
+            # un binario de Ubuntu 24 no arrancaría en distribuciones viejas.
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Construir
+        run: python packaging/build.py --no-install
+
+      - name: Comprobar que arranca
+        run: python packaging/smoke_test.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AutoEdit-${{ matrix.os }}
+          path: dist/AutoEdit-*
+          if-no-files-found: error
+
+  release:
+    name: Publicar release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: binarios
+          merge-multiple: true
+
+      - name: Adjuntar a la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -la binarios
+          gh release create "${GITHUB_REF_NAME}" binarios/AutoEdit-* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "AutoEdit ${GITHUB_REF_NAME}" \
+            --generate-notes \
+            || gh release upload "${GITHUB_REF_NAME}" binarios/AutoEdit-* \
+                 --repo "${GITHUB_REPOSITORY}" --clobber
