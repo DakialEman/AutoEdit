@@ -22,13 +22,13 @@ from pydantic import BaseModel
 
 from . import editing, storage
 from .ai import planner, prompt as prompt_ai, styles
-from .config import SETTINGS, find_ffmpeg, find_ffprobe
+from .config import SETTINGS, find_ffmpeg, find_ffprobe, web_dir
 from .export import FORMATS, capcut, edl, fcpxml
 from .jobs import JOBS
 from .models import Asset, Project, StyleSpec, Timeline
 from .render import font_diagnostics, render_timeline
 
-WEB_DIR = Path(__file__).resolve().parent.parent / "web"
+WEB_DIR = web_dir()
 
 
 @asynccontextmanager

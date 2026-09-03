@@ -1,4 +1,4 @@
-"""Arranque de AutoEdit: `python -m autoedit`.
+"""Arranque de AutoEdit: `python -m autoedit` o el ejecutable empaquetado.
 
 Levanta el servidor local y abre el navegador. También expone algunos
 subcomandos para trabajar desde la terminal sin interfaz.
@@ -7,16 +7,22 @@ subcomandos para trabajar desde la terminal sin interfaz.
 from __future__ import annotations
 
 import argparse
+import multiprocessing
 import sys
 import threading
 import webbrowser
 from pathlib import Path
+from typing import Any
 
 
 def _serve(args: argparse.Namespace) -> int:
     import uvicorn
 
-    from .config import SETTINGS, find_ffmpeg
+    from .config import SETTINGS, find_ffmpeg, frozen
+
+    if frozen():
+        # El ejecutable no lleva código fuente que vigilar.
+        args.reload = False
 
     SETTINGS.host, SETTINGS.port = args.host, args.port
     SETTINGS.ensure_dirs()
@@ -37,8 +43,16 @@ def _serve(args: argparse.Namespace) -> int:
     if not args.no_browser:
         threading.Timer(1.2, lambda: webbrowser.open(url)).start()
 
+    # Con recarga hace falta la ruta de importación; sin ella, pasar el objeto
+    # directamente evita que el ejecutable vuelva a importarse a sí mismo.
+    target: Any = "autoedit.app:app"
+    if not args.reload:
+        from .app import app as asgi_app
+
+        target = asgi_app
+
     uvicorn.run(
-        "autoedit.app:app",
+        target,
         host=args.host,
         port=args.port,
         reload=args.reload,
@@ -129,7 +143,26 @@ def _cli_doctor(_args: argparse.Namespace) -> int:
     return 0
 
 
+def _utf8_console() -> None:
+    """Evita que un acento o un emoji tumben el programa.
+
+    Con la salida redirigida a un archivo o a una tubería, Python no usa UTF-8
+    sino la codificación regional del sistema —cp1252 en un Windows español—,
+    donde un simple `✓` no existe y levanta UnicodeEncodeError. `replace` deja
+    además una salida legible en las consolas antiguas en vez de reventar.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError, OSError):
+            pass  # Salida sustituida por otra cosa: no hay nada que ajustar.
+
+
 def main(argv: list[str] | None = None) -> int:
+    # PyInstaller relanza el propio ejecutable para crear procesos hijo.
+    multiprocessing.freeze_support()
+    _utf8_console()
+
     parser = argparse.ArgumentParser(prog="autoedit", description="Editor de vídeo automático y local")
     sub = parser.add_subparsers(dest="command")
 
@@ -158,7 +191,23 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if not getattr(args, "func", None):
         args = parser.parse_args(["serve", *(argv or [])])
-    return args.func(args)
+
+    code = args.func(args)
+
+    # Si alguien abrió el ejecutable con doble clic y algo falló, la ventana se
+    # cerraría de golpe sin que le diera tiempo a leer el error.
+    if code and _double_clicked():
+        try:
+            input("\n  Pulsa Intro para cerrar…")
+        except (EOFError, KeyboardInterrupt):
+            pass
+    return code
+
+
+def _double_clicked() -> bool:
+    from .config import frozen
+
+    return frozen() and len(sys.argv) == 1
 
 
 if __name__ == "__main__":

@@ -1,0 +1,94 @@
+name: Ejecutables
+
+# Un ejecutable solo se construye desde su propio sistema, así que cada uno sale
+# de un runner distinto: el .exe de Windows no se puede hacer desde Linux ni al
+# revés. Se lanza a mano desde la pestaña Actions, al publicar una etiqueta
+# (`git tag v1.0.0 && git push --tags`), y también en las ramas y pull requests
+# que tocan algo de lo que acaba dentro del binario — así se sabe que sigue
+# construyendo y arrancando en los tres sistemas antes de publicar nada.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - "autoedit/**"
+      - "web/**"
+      - "packaging/**"
+      - "requirements.txt"
+      - ".github/workflows/build.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.nombre }}
+    runs-on: ${{ matrix.os }}
+    # Una construcción entera lleva un par de minutos. Si pasa de esto, es que
+    # el runner se ha quedado colgado, y más vale fallar que encallar el PR.
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            nombre: Windows (x64)
+          - os: macos-15-intel
+            nombre: macOS (Intel)
+            # `macos-13` se quedó sin runners: los trabajos se encolaban y no
+            # los recogía nadie. Ésta es la imagen de Intel vigente.
+          - os: macos-14
+            nombre: macOS (Apple Silicon)
+          - os: ubuntu-22.04
+            nombre: Linux (x64)
+            # Se construye sobre la glibc más antigua que sigue con soporte:
+            # un binario de Ubuntu 24 no arrancaría en distribuciones viejas.
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Construir
+        run: python packaging/build.py --no-install
+
+      - name: Comprobar que arranca
+        run: python packaging/smoke_test.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AutoEdit-${{ matrix.os }}
+          path: dist/AutoEdit-*
+          if-no-files-found: error
+
+  release:
+    name: Publicar release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: binarios
+          merge-multiple: true
+
+      - name: Adjuntar a la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -la binarios
+          gh release create "${GITHUB_REF_NAME}" binarios/AutoEdit-* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "AutoEdit ${GITHUB_REF_NAME}" \
+            --generate-notes \
+            || gh release upload "${GITHUB_REF_NAME}" binarios/AutoEdit-* \
+                 --repo "${GITHUB_REPOSITORY}" --clobber

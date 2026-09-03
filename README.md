@@ -8,9 +8,85 @@ color. Después puedes retocarlo a mano y exportarlo como **MP4** o como
 
 Nada sube a internet. Ni tus vídeos, ni tu prompt, ni nada.
 
+Hay [ejecutable](#el-ejecutable) para Windows, macOS y Linux: un archivo, doble clic, sin instalar Python.
+
 ---
 
-## Instalación
+## El ejecutable
+
+Un solo archivo, sin instalar Python ni nada. Lleva dentro el propio Python, la
+interfaz y FFmpeg; pesa unos 70 MB.
+
+Descárgalo de la página de
+[releases](https://github.com/DakialEman/AutoEdit/releases) — hay uno por
+sistema — y ábrelo con doble clic. Se abre una ventana de terminal con la
+dirección de la interfaz y el navegador solo, en <http://127.0.0.1:8765>. Para
+cerrarlo, cierra esa ventana. Tus proyectos siguen guardándose en `~/AutoEdit`,
+así que puedes borrar y reemplazar el ejecutable sin perder nada.
+
+| Sistema | Archivo |
+| --- | --- |
+| Windows 10/11 | `AutoEdit-windows-x64.exe` |
+| macOS con Apple Silicon (M1 y posteriores) | `AutoEdit-macos-arm64` |
+| macOS con Intel | `AutoEdit-macos-x64` |
+| Linux | `AutoEdit-linux-x64` |
+
+La primera vez tarda unos segundos más en abrir, porque descomprime su contenido
+en una carpeta temporal.
+
+> **Windows** enseña un aviso azul de SmartScreen («Windows protegió tu PC»)
+> porque el archivo no está firmado — firmar cuesta unos cientos de euros al año.
+> Pulsa **Más información → Ejecutar de todas formas**.
+>
+> **macOS** dice que «no se puede comprobar que no contenga software malicioso»,
+> por lo mismo. Abre la carpeta en el Finder, clic derecho sobre el archivo →
+> **Abrir** → **Abrir**. O desde la terminal:
+>
+> ```bash
+> chmod +x AutoEdit-macos-arm64
+> xattr -dr com.apple.quarantine AutoEdit-macos-arm64
+> ./AutoEdit-macos-arm64
+> ```
+>
+> **Linux**: `chmod +x AutoEdit-linux-x64` y a correr.
+
+El ejecutable acepta los mismos subcomandos que `python -m autoedit`, si lo
+llamas desde una terminal:
+
+```bash
+./AutoEdit-linux-x64 doctor                     # comprobar el entorno
+./AutoEdit-linux-x64 edit ./material -p "algo dinámico" -o video.mp4
+./AutoEdit-linux-x64 serve --port 9000          # la interfaz en otro puerto
+```
+
+### Construirlo tú
+
+Con el repositorio clonado y las dependencias instaladas:
+
+```bash
+pip install pyinstaller
+python packaging/build.py
+```
+
+Sale en `dist/`. Un ejecutable solo se puede construir **desde su propio
+sistema**: el `.exe` hay que hacerlo en Windows, el de macOS en un Mac. Para
+tenerlos los tres sin tener las tres máquinas está
+`.github/workflows/build.yml`, que los construye en GitHub Actions — se lanza a
+mano desde la pestaña *Actions*, o solo con publicar una etiqueta:
+
+```bash
+git tag v1.0.0 && git push --tags
+```
+
+Y para comprobar que el binario recién hecho arranca de verdad:
+
+```bash
+python packaging/smoke_test.py
+```
+
+---
+
+## Instalación desde el código
 
 Hace falta **Python 3.10 o superior**. Compruébalo con `python --version`.
 
@@ -212,6 +288,7 @@ autoedit/
   export/           CapCut, FCPXML, EDL, proyecto nativo
   app.py            API HTTP y servidor de la interfaz
 web/                Interfaz sin build: HTML, CSS y JavaScript a pelo
+packaging/          El ejecutable: receta de PyInstaller, build y prueba
 ```
 
 Tres decisiones que explican casi todo lo demás:
@@ -257,7 +334,7 @@ pip install pytest httpx
 pytest
 ```
 
-Son 142 y tardan unos segundos. La suite de render genera su propio material con
+Son 157 y tardan unos segundos. La suite de render genera su propio material con
 FFmpeg y se salta sola si no lo encuentra.
 
 ---
